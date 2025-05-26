@@ -73,59 +73,64 @@ def plotLagrange(x,y,N=128,name="default"):
 
 def splineInterpolation(x, y, xi, N):
     idx = np.round(np.linspace(0, len(x) - 1, N)).astype(int)
+    idx = np.unique(idx)
     inter_x = x[idx]
     inter_y = y[idx]
-    inter_x = normalize(inter_x, 0, 1)
-    h = 1/N
-    A = np.array([[1,0,0,0,0,0,0,0],
-                  [0,0,0,0,1,0,0,0],
-                  [1,h,h*h,h*h*h,0,0,0,0],
-                  [0,0,0,0,1,h,h*h,h*h*h],
-                  [0,1,2*h,3*h*h,0,-1,0,0],
-                  [0,0,2,6*h,0,0,-2,0],
-                  [0,0,h,0,0,0,0,0],
-                  [0,0,0,0,0,0,2,6*h]])
-    i = 0
-    while(xi > inter_x[i+1]):
-        i += 1
-    if xi > inter_x[-2]:
-        i -= 1
-        b = np.array([[inter_y[i]],
-                    [inter_y[i+1]],
-                    [inter_y[i+1]],
-                    [inter_y[i+2]],
-                    [0],
-                    [0],
-                    [0],
-                    [0]])
-        c = np.linalg.solve(A,b)
-        dx = xi - inter_x[i+1]
-        result = c[4][0] + c[5][0]*dx + c[6][0]*dx**2 + c[7][0]*dx**3
-        return float(result)
+    n = len(inter_x)
+
+    #if last interval then handle differently
+    if xi == x[-1]:
+        return y[-1]
+    if xi >= inter_x[-2]:
+        i = n - 3
+        use_second_poly = True
     else:
-        b = np.array([[inter_y[i]],
-                    [inter_y[i+1]],
-                    [inter_y[i+1]],
-                    [inter_y[i+2]],
-                    [0],
-                    [0],
-                    [0],
-                    [0]])
-        c = np.linalg.solve(A,b)
+        i = 0
+        while i < n - 2 and xi > inter_x[i + 1]:
+            i += 1
+        use_second_poly = xi > inter_x[i + 1]
+    #calc distance between nodes
+    h = inter_x[i + 1] - inter_x[i]
+    A = np.array([
+        [1, 0,     0,     0,     0, 0,     0,     0],
+        [0, 0,     0,     0,     1, 0,     0,     0],
+        [1, h,   h**2,  h**3,    0, 0,     0,     0],
+        [0, 0,     0,     0,     1, h,   h**2,  h**3],
+        [0, 1,  2*h,  3*h**2,    0, -1,     0,     0],
+        [0, 0,     2,  6*h,      0,  0,    -2,     0],
+        [0, 0,    h,     0,      0,  0,     0,     0],
+        [0, 0,     0,     0,     0,  0,     2,  6*h]
+    ])
+    b = np.array([
+        [inter_y[i]],
+        [inter_y[i + 1]],
+        [inter_y[i + 1]],
+        [inter_y[i + 2]],
+        [0],
+        [0],
+        [0],
+        [0]
+    ])
+    c = np.linalg.solve(A, b)
+    if use_second_poly:
+        dx = xi - inter_x[i + 1]
+        result = c[4][0] + c[5][0]*dx + c[6][0]*dx**2 + c[7][0]*dx**3
+    else:
         dx = xi - inter_x[i]
         result = c[0][0] + c[1][0]*dx + c[2][0]*dx**2 + c[3][0]*dx**3
-        return float(result)
+    return float(result)
+
 
 def plotSpline(x,y,N=128,name="default"):
     plot_min_number = np.round(np.log2(N)-3).astype(int)
     for row in range(4):
         n = 2**(plot_min_number + row)
-        domain_x = np.linspace(0.0, 1.0, len(x))
+        domain_x = np.linspace(0.0, x[-1], len(x))
         domain_y = [splineInterpolation(x,y,domain_x[i], n) for i in range(len(x))]
-        domain_x = normalize(domain_x, 0.0, x[-1])
         plt.plot(domain_x, domain_y)
         plt.plot(x,y)
         idx = np.round(np.linspace(0, len(x) - 1, n)).astype(int)
+        idx = np.unique(idx)
         plt.scatter(x[idx],y[idx])
         plt.ylim(np.min(y) * 0.75, np.max(y) * 1.5)
         plt.legend(["interpolowane","oryginalne","węzły"])
@@ -135,8 +140,8 @@ def plotSpline(x,y,N=128,name="default"):
         plt.subplots_adjust(hspace=0.6)
         plt.show()
 
-#plotSpline(first_x, first_y, N=128, name="100") #<-----------------------------------------------
-#plotSpline(second_x, second_y, N=128, name="Spacerniak Gdańsk")
+plotSpline(first_x, first_y, N=128, name="100") #<-----------------------------------------------
+plotSpline(second_x, second_y, N=128, name="Spacerniak Gdańsk")
 
 def Lagrangeinterpolation2(x, y, xi):
     length = len(x)
